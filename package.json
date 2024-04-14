@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "frog dev",
-    "serve": "tsx src/index.tsx"
+    "serve": "tsx src/index.tsx",
+    "host": "node src/index.js" 
   },
   "dependencies": {
     "@hono/node-server": "^1",
