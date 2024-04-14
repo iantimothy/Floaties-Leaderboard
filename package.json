@@ -1,0 +1,19 @@
+{
+  "name": "framed-frog-on-node",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "frog dev",
+    "serve": "tsx src/index.tsx"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1",
+    "frog": "latest",
+    "got": "^14.2.1",
+    "hono": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "tsx": "^3.12.2"
+  }
+}
