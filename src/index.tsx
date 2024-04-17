@@ -67,6 +67,73 @@ app.frame('/', async (c) => {
   })
 })
 
+app.frame('/uprightV1', (c) => {
+  let cell = 121
+  const { buttonValue } = c
+
+  cell = buttonValue !== undefined ? parseInt(buttonValue) : cell;
+
+  const numRows = 12;
+  const numCols = 12;
+  
+  const currentRow = Math.floor(cell / numCols);
+  const currentCol = cell % numCols;
+
+  // Calculate the indices for the cell above (wrapping around if necessary)
+  const cellUpRow = currentRow === 0 ? numRows - 1 : currentRow - 1;
+  const cellUpCol = currentCol;
+
+  // Calculate the indices for the cell to the right (wrapping around if necessary)
+  const cellRightRow = currentRow;
+  const cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
+
+  // Calculate the cell numbers from the row and column indices
+  const cellUp = (cellUpRow * numCols + cellUpCol).toString();
+  const cellRight = (cellRightRow * numCols + cellRightCol).toString();
+  
+  return c.res({
+    image: (
+      <div
+        style={{
+          display: 'flex',
+          height: '100%',
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'white',
+        }}
+      >
+        <div
+          style={{
+            width: 480,
+            flexWrap: 'wrap',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >     
+        {[...Array(144)].map((_, index) => (
+              <span
+                key={index}
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: index === cell ? 'white' : 'black',
+                  border: 'grey',
+                  borderWidth: 1
+                }}
+              />
+        ))}
+        </div>
+      </div>
+    ),
+    intents: [
+      <Button value={cellUp}>Up</Button>,
+      <Button value={cellRight}>Right</Button>,
+      <Button.Reset>Reset</Button.Reset>,      
+    ],
+  })
+})
+
 devtools(app, { serveStatic })
 
 serve({

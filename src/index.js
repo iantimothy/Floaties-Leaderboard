@@ -29,6 +29,50 @@ app.frame('/', async (c) => {
         ],
     });
 });
+app.frame('/uprightV1', (c) => {
+    let cell = 121;
+    const { buttonValue } = c;
+    cell = buttonValue !== undefined ? parseInt(buttonValue) : cell;
+    const numRows = 12;
+    const numCols = 12;
+    const currentRow = Math.floor(cell / numCols);
+    const currentCol = cell % numCols;
+    // Calculate the indices for the cell above (wrapping around if necessary)
+    const cellUpRow = currentRow === 0 ? numRows - 1 : currentRow - 1;
+    const cellUpCol = currentCol;
+    // Calculate the indices for the cell to the right (wrapping around if necessary)
+    const cellRightRow = currentRow;
+    const cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
+    // Calculate the cell numbers from the row and column indices
+    const cellUp = (cellUpRow * numCols + cellUpCol).toString();
+    const cellRight = (cellRightRow * numCols + cellRightCol).toString();
+    return c.res({
+        image: (_jsx("div", Object.assign({ style: {
+                display: 'flex',
+                height: '100%',
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'white',
+            } }, { children: _jsx("div", Object.assign({ style: {
+                    width: 480,
+                    flexWrap: 'wrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                } }, { children: [...Array(144)].map((_, index) => (_jsx("span", { style: {
+                        width: 40,
+                        height: 40,
+                        background: index === cell ? 'white' : 'black',
+                        border: 'grey',
+                        borderWidth: 1
+                    } }, index))) }), void 0) }), void 0)),
+        intents: [
+            _jsx(Button, Object.assign({ value: cellUp }, { children: "Up" }), void 0),
+            _jsx(Button, Object.assign({ value: cellRight }, { children: "Right" }), void 0),
+            _jsx(Button.Reset, { children: "Reset" }, void 0),
+        ],
+    });
+});
 devtools(app, { serveStatic });
 serve({
     fetch: app.fetch,
