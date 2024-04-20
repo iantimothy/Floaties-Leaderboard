@@ -306,9 +306,9 @@ app.frame('/uprightV1', (c) => {
                 style={{
                   width: 40,
                   height: 40,
-                  background: index === cell ? 'white' : 'black',
-                  border: 'grey',
-                  borderWidth: 1
+                  background: 'black',
+                  border: index === cell ? 'white' : 'grey',
+                  borderWidth: index === cell ? 4 : 1,
                 }}
               />
         ))}
