@@ -26,6 +26,64 @@ interface ApiResponse {
   data: User[];
 }
 
+function createArray(size: number): number[] {
+  return Array.from({ length: size }, () => 0);
+}
+
+function decode(hexString: string): number[] {
+  // Convert hexadecimal string to binary string
+  const binaryString = hexToBinary(hexString);
+  // Split binary string into groups of two characters
+  const binaryGroups = binaryString.match(/.{1,2}/g);
+  // Convert each group back to decimal and store in an array
+  const cells = binaryGroups!.map(group => parseInt(group, 2));
+  return cells;
+}
+
+function encode(cells: number[]): string {
+  const binaryString = encodeToBinary(cells);
+  const hexString = binaryToHex(binaryString);
+  return hexString;
+}
+
+function encodeToBinary(cells: number[]): string {
+  const binaryString = cells.map(cell => cell.toString(2).padStart(2, '0')).join('');
+  const hexString = binaryString.padStart(288, '0');
+  return hexString;
+}
+
+function binaryToHex(binaryString: string): string {
+  // Convert binary string to integer
+  const intValue = parseInt(binaryString, 2);
+  // Convert integer to hex string
+  const hexString = intValue.toString(16).toUpperCase(); // Convert to uppercase for consistency
+  return hexString;
+}
+
+function hexToBinary(hexString: string): string {
+  // Convert hex string to integer
+  const intValue = parseInt(hexString, 16);
+  // Convert integer to binary string
+  const binaryString = intValue.toString(2);
+  return binaryString;
+}
+
+function combineValues(value1: number, hexString: string): string {
+  const combinedString = `${value1}0x${hexString}`;
+  return combinedString;
+}
+
+function splitCombinedString(combinedString: string, original:[number,string]): [number, string] {
+  const parts = combinedString.split('0x');
+  if (parts.length === 2) {
+      const value1 = parseInt(parts[0]);
+      const hexString = parts[1];
+      return [value1, hexString];
+  } else {
+      return original;
+  }
+}
+
 export const app = new Frog({
   // Supply a Hub to enable frame verification.
   // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
@@ -68,10 +126,20 @@ app.frame('/', async (c) => {
 })
 
 app.frame('/uprightV1', (c) => {
-  let cell = 121
+  const gridSize = 144
   const { buttonValue } = c
 
-  cell = buttonValue !== undefined ? parseInt(buttonValue) : cell;
+  let gridArray = createArray(gridSize)
+  let cell = 121 // Counting from 0.
+  
+  let splitValue:[number,string] = [cell, encode(gridArray)];
+
+  if(buttonValue){
+    splitValue = splitCombinedString(buttonValue,splitValue);
+  }
+
+  cell = splitValue[0] !== undefined ? splitValue[0] : cell;
+  gridArray = decode(splitValue[1]);
 
   const numRows = 12;
   const numCols = 12;
@@ -88,9 +156,15 @@ app.frame('/uprightV1', (c) => {
   const cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
 
   // Calculate the cell numbers from the row and column indices
-  const cellUp = (cellUpRow * numCols + cellUpCol).toString();
-  const cellRight = (cellRightRow * numCols + cellRightCol).toString();
+  const cellUp = (cellUpRow * numCols + cellUpCol);
+  const cellRight = (cellRightRow * numCols + cellRightCol);
   
+  const upButtionValue = combineValues(cellUp, "0");
+  const rightButtionValue = combineValues(cellRight, "0");
+
+  const colors = ['#000000','#D6589F', '#D895DA', '#C4E4FF'];
+  let toggledColor = colors[0];
+
   return c.res({
     image: (
       <div
@@ -103,6 +177,85 @@ app.frame('/uprightV1', (c) => {
           background: 'white',
         }}
       >
+        <div 
+            style={{
+              left: 42,
+              top: 42,
+              position: 'absolute',
+              display: 'flex',
+              flexDirection: "column"
+            }}        
+        >
+          <div
+            style = {{
+              display: 'flex',
+              flexDirection: "row",
+              marginBottom: 10
+            }}
+          >
+          <span
+            style={{
+              width: 40,
+              height: 40,
+              background: colors[1]
+            }}
+          />
+          <span
+            style={{
+              fontSize: 20,
+              marginLeft: 10
+            }}
+          >
+          #D6589F
+          </span>
+          </div>
+          <div
+            style = {{
+              display: 'flex',
+              flexDirection: "row",
+              marginBottom: 10
+            }}
+          >
+          <span
+            style={{
+              width: 40,
+              height: 40,
+              background: colors[2]
+            }}
+          />
+          <span
+            style={{
+              fontSize: 20,
+              marginLeft: 10
+            }}
+          >
+          #D895DA
+          </span>
+          </div>
+          <div
+            style = {{
+              display: 'flex',
+              flexDirection: "row",
+              marginBottom: 10
+            }}
+          >
+          <span
+            style={{
+              width: 40,
+              height: 40,
+              background: colors[3]
+            }}
+          />
+          <span
+            style={{
+              fontSize: 20,
+              marginLeft: 10
+            }}
+          >
+          #C4E4FF
+          </span>
+          </div>
+        </div>
         <div
           style={{
             width: 480,
@@ -111,7 +264,7 @@ app.frame('/uprightV1', (c) => {
             alignItems: 'center',
           }}
         >     
-        {[...Array(144)].map((_, index) => (
+        {[...Array(gridSize)].map((_, index) => (
               <span
                 key={index}
                 style={{
@@ -127,8 +280,8 @@ app.frame('/uprightV1', (c) => {
       </div>
     ),
     intents: [
-      <Button value={cellUp}>Up</Button>,
-      <Button value={cellRight}>Right</Button>,
+      <Button value={upButtionValue}>Up</Button>,
+      <Button value={rightButtionValue}>Right</Button>,
       <Button.Reset>Reset</Button.Reset>,      
     ],
   })
@@ -136,7 +289,7 @@ app.frame('/uprightV1', (c) => {
 
 devtools(app, { serveStatic })
 
-serve({
-  fetch: app.fetch,
-  port: 3000,
-})
+// serve({
+//   fetch: app.fetch,
+//   port: 3000,
+// })
