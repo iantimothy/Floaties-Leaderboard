@@ -68,17 +68,18 @@ function hexToBinary(hexString: string): string {
   return binaryString;
 }
 
-function combineValues(value1: number, hexString: string): string {
-  const combinedString = `${value1}0x${hexString}`;
+function combineValues(value1: number, value2: number, hexString: string): string {
+  const combinedString = `${value1}0x${value2}0x${hexString}`;
   return combinedString;
 }
 
-function splitCombinedString(combinedString: string, original:[number,string]): [number, string] {
+function splitCombinedString(combinedString: string, original: [number, number, string]): [number, number, string] {
   const parts = combinedString.split('0x');
-  if (parts.length === 2) {
+  if (parts.length === 3) {
       const value1 = parseInt(parts[0]);
-      const hexString = parts[1];
-      return [value1, hexString];
+      const value2 = parseInt(parts[1]);
+      const hexString = parts[2];
+      return [value1, value2, hexString];
   } else {
       return original;
   }
@@ -126,23 +127,27 @@ app.frame('/', async (c) => {
 })
 
 app.frame('/uprightV1', (c) => {
+  const colors = ['#000000','#D6589F', '#D895DA', '#C4E4FF'];
+  const numRows = 12;
+  const numCols = 12;
   const gridSize = 144
   const { buttonValue } = c
 
   let gridArray = createArray(gridSize)
   let cell = 121 // Counting from 0.
+  let toggledIndex = 0;
+  let toggledColor = colors[toggledIndex];
   
-  let splitValue:[number,string] = [cell, encode(gridArray)];
+  let splitValue:[number, number, string] = [toggledIndex, cell, encode(gridArray)];
 
   if(buttonValue){
     splitValue = splitCombinedString(buttonValue,splitValue);
   }
 
-  cell = splitValue[0] !== undefined ? splitValue[0] : cell;
-  gridArray = decode(splitValue[1]);
-
-  const numRows = 12;
-  const numCols = 12;
+  toggledIndex = splitValue[0];
+  cell = splitValue[0] !== undefined ? splitValue[1] : cell;
+  gridArray = decode(splitValue[2]);
+  toggledColor = colors[toggledIndex];
   
   const currentRow = Math.floor(cell / numCols);
   const currentCol = cell % numCols;
@@ -154,16 +159,15 @@ app.frame('/uprightV1', (c) => {
   // Calculate the indices for the cell to the right (wrapping around if necessary)
   const cellRightRow = currentRow;
   const cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
+  const nextToggleValue = (toggledIndex + 1) % 4;
 
   // Calculate the cell numbers from the row and column indices
   const cellUp = (cellUpRow * numCols + cellUpCol);
   const cellRight = (cellRightRow * numCols + cellRightCol);
   
-  const upButtionValue = combineValues(cellUp, "0");
-  const rightButtionValue = combineValues(cellRight, "0");
-
-  const colors = ['#000000','#D6589F', '#D895DA', '#C4E4FF'];
-  let toggledColor = colors[0];
+  const upButtionValue = combineValues(toggledIndex, cellUp, "0");
+  const rightButtionValue = combineValues(toggledIndex, cellRight, "0");
+  const toggledButtonValue = combineValues(nextToggleValue, cell, "0");
 
   return c.res({
     image: (
@@ -190,7 +194,35 @@ app.frame('/uprightV1', (c) => {
             style = {{
               display: 'flex',
               flexDirection: "row",
-              marginBottom: 10
+              marginBottom: 10,
+              borderWidth: 2,
+              borderColor: toggledColor === colors[0] ? '#000000' : '#FFFFFF'
+            }}
+          >
+          <span
+            style={{
+              width: 40,
+              height: 40,
+              background: colors[0]
+            }}
+          />
+          <span
+            style={{
+              fontSize: 20,
+              marginLeft: 10,
+              marginRight: 10
+            }}
+          >
+          #000000
+          </span>
+          </div>
+          <div
+            style = {{
+              display: 'flex',
+              flexDirection: "row",
+              marginBottom: 10,
+              borderWidth: 2,
+              borderColor: toggledColor === colors[1] ? '#000000' : '#FFFFFF'
             }}
           >
           <span
@@ -213,7 +245,9 @@ app.frame('/uprightV1', (c) => {
             style = {{
               display: 'flex',
               flexDirection: "row",
-              marginBottom: 10
+              marginBottom: 10,
+              borderWidth: 2,
+              borderColor: toggledColor === colors[2] ? '#000000' : '#FFFFFF'
             }}
           >
           <span
@@ -236,7 +270,9 @@ app.frame('/uprightV1', (c) => {
             style = {{
               display: 'flex',
               flexDirection: "row",
-              marginBottom: 10
+              marginBottom: 10,
+              borderWidth: 2,
+              borderColor: toggledColor === colors[3] ? '#000000' : '#FFFFFF'
             }}
           >
           <span
@@ -282,6 +318,7 @@ app.frame('/uprightV1', (c) => {
     intents: [
       <Button value={upButtionValue}>Up</Button>,
       <Button value={rightButtionValue}>Right</Button>,
+      <Button value={toggledButtonValue}>Toggle</Button>,
       <Button.Reset>Reset</Button.Reset>,      
     ],
   })
