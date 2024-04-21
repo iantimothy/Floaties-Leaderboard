@@ -3,6 +3,7 @@ import { Frog, Button } from 'frog'
 import { devtools } from 'frog/dev'
 import got from 'got';
 import { serve } from '@hono/node-server';
+import { BASE62 } from "@thi.ng/base-n";
 
 // import { neynar } from 'frog/hubs'
 
@@ -71,14 +72,17 @@ function binaryToHex(binaryString: string): string {
   // Convert binary string to integer
   const intValue = BigInt('0b' + binaryString);
   // Convert integer to hex string
-  const hexString = intValue.toString(16); 
+  //  const hexString = intValue.toString(16); 
+  //  Base36
+  const hexString = BASE62.encodeBigInt(intValue);
   return hexString;
 }
 
 function hexToBinary(hexString: string): string {
   // Convert hex string to integer
-  const intValue = BigInt('0x' + hexString);
+  //  const intValue = BigInt('0x' + hexString);
   // Convert integer to binary string
+  const intValue = BASE62.decodeBigInt(hexString);
   const binaryString = intValue.toString(2);
   return binaryString;
 }
@@ -100,9 +104,20 @@ function splitCombinedString(combinedString: string, original: [number, number, 
   }
 }
 
-export const app = new Frog({
+type State = {
+  toggledIndex: number,
+  cell: number
+  gridArrayString: string,  // Base62.
+}
+
+export const app = new Frog<{ State: State }>({
   // Supply a Hub to enable frame verification.
   // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
+  initialState: {
+    toggledIndex: 0,
+    cell: 121,
+    gridArrayString: encode(createArray(144))
+  }
 })
 
 app.use('/*', serveStatic({ root: './public' }))
@@ -146,47 +161,42 @@ app.frame('/uprightV1', (c) => {
   const numRows = 12;
   const numCols = 12;
   const gridSize = 144
-  const { buttonValue } = c
+  const { buttonValue, deriveState } = c
 
-  let gridArray = createArray(gridSize)
-  let cell = 121 // Counting from 0.
-  let toggledIndex = 0;
-  let toggledColor = colors[toggledIndex];
+  const state = deriveState(previousState => {
+    let previousCell = previousState.cell;
+    let currentRow = Math.floor(previousCell / numCols);
+    let currentCol = previousCell % numCols;
+
+    if (buttonValue === 'up') {
+      // Calculate the indices for the cell above (wrapping around if necessary)
+      let cellUpRow = currentRow === 0 ? numRows - 1 : currentRow - 1;
+      let cellUpCol = currentCol;
+      let cellUp = (cellUpRow * numCols + cellUpCol);
+      previousState.cell = cellUp;
+    }
+    if (buttonValue === 'right') {
+      // Calculate the indices for the cell to the right (wrapping around if necessary)
+      let cellRightRow = currentRow;
+      let cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
+      // Calculate the cell numbers from the row and column indices
+      let cellRight = (cellRightRow * numCols + cellRightCol);
+      previousState.cell = cellRight;
+    }
+    if (buttonValue === 'toggle') {
+      previousState.toggledIndex = (previousState.toggledIndex + 1) % 4;
+    }
+    let gridArray = decode(previousState.gridArrayString);
+    gridArray[previousState.cell] = previousState.toggledIndex;
+    let encodedGA = encode(gridArray);
+    previousState.gridArrayString = encodedGA;
+  })
+
+  var toggledIndex = state.toggledIndex;
+  var cell = state.cell;
+  var gridArray = decode(state.gridArrayString);
+  var toggledColor = colors[toggledIndex];
   
-  let splitValue:[number, number, string] = [toggledIndex, cell, encode(gridArray)];
-
-  if(buttonValue){
-    splitValue = splitCombinedString(buttonValue,splitValue);
-  }
-
-  toggledIndex = splitValue[0];
-  cell = splitValue[0] !== undefined ? splitValue[1] : cell;
-  gridArray = decode(splitValue[2]);
-
-  toggledColor = colors[toggledIndex];
-  gridArray[cell] = toggledIndex;
-
-  const currentRow = Math.floor(cell / numCols);
-  const currentCol = cell % numCols;
-
-  // Calculate the indices for the cell above (wrapping around if necessary)
-  const cellUpRow = currentRow === 0 ? numRows - 1 : currentRow - 1;
-  const cellUpCol = currentCol;
-
-  // Calculate the indices for the cell to the right (wrapping around if necessary)
-  const cellRightRow = currentRow;
-  const cellRightCol = currentCol === numCols - 1 ? 0 : currentCol + 1;
-  const nextToggleValue = (toggledIndex + 1) % 4;
-
-  // Calculate the cell numbers from the row and column indices
-  const cellUp = (cellUpRow * numCols + cellUpCol);
-  const cellRight = (cellRightRow * numCols + cellRightCol);
-  
-  const encodedGA = encode(gridArray);
-  const upButtionValue = combineValues(toggledIndex, cellUp, encodedGA);
-  const rightButtionValue = combineValues(toggledIndex, cellRight, encodedGA);
-  const toggledButtonValue = combineValues(nextToggleValue, cell, encodedGA);
-
   return c.res({
     image: (
       <div
@@ -334,9 +344,9 @@ app.frame('/uprightV1', (c) => {
       </div>
     ),
     intents: [
-      <Button value={upButtionValue}>Up</Button>,
-      <Button value={rightButtionValue}>Right</Button>,
-      <Button value={toggledButtonValue}>Toggle</Button>,
+      <Button value="up">Up</Button>,
+      <Button value="right">Right</Button>,
+      <Button value="toggle">Toggle</Button>,
       <Button.Reset>Reset</Button.Reset>,      
     ],
   })
@@ -344,7 +354,7 @@ app.frame('/uprightV1', (c) => {
 
 devtools(app, { serveStatic })
 
-serve({
-  fetch: app.fetch,
-  port: 3000,
-})
+// serve({
+//   fetch: app.fetch,
+//   port: 3000,
+// })
