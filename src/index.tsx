@@ -30,11 +30,25 @@ function createArray(size: number): number[] {
   return Array.from({ length: size }, () => 0);
 }
 
+// Function to append a sequence to the binary string
+function appendSequence(binaryString: string, sequence: string): string {
+  return sequence + binaryString;
+}
+
+// Function to remove the prepended sequence from the binary string
+function removeSequence(binaryString: string, sequence: string): string {
+  if (binaryString.startsWith(sequence)) {
+      return binaryString.slice(sequence.length);
+  }
+  return binaryString; // Sequence not found, return original binary string
+}
+
 function decode(hexString: string): number[] {
   // Convert hexadecimal string to binary string
   const binaryString = hexToBinary(hexString);
+  const withoutSequence = removeSequence(binaryString, "11");
   // Split binary string into groups of two characters
-  const binaryGroups = binaryString.match(/.{1,2}/g);
+  const binaryGroups = withoutSequence.match(/.{1,2}/g);
   // Convert each group back to decimal and store in an array
   const cells = binaryGroups!.map(group => parseInt(group, 2));
   return cells;
@@ -42,7 +56,8 @@ function decode(hexString: string): number[] {
 
 function encode(cells: number[]): string {
   const binaryString = encodeToBinary(cells);
-  const hexString = binaryToHex(binaryString);
+  const withSequence = appendSequence(binaryString, "11");
+  const hexString = binaryToHex(withSequence);
   return hexString;
 }
 
@@ -54,15 +69,15 @@ function encodeToBinary(cells: number[]): string {
 
 function binaryToHex(binaryString: string): string {
   // Convert binary string to integer
-  const intValue = parseInt(binaryString, 2);
+  const intValue = BigInt('0b' + binaryString);
   // Convert integer to hex string
-  const hexString = intValue.toString(16).toUpperCase(); // Convert to uppercase for consistency
+  const hexString = intValue.toString(16); 
   return hexString;
 }
 
 function hexToBinary(hexString: string): string {
   // Convert hex string to integer
-  const intValue = parseInt(hexString, 16);
+  const intValue = BigInt('0x' + hexString);
   // Convert integer to binary string
   const binaryString = intValue.toString(2);
   return binaryString;
@@ -147,8 +162,10 @@ app.frame('/uprightV1', (c) => {
   toggledIndex = splitValue[0];
   cell = splitValue[0] !== undefined ? splitValue[1] : cell;
   gridArray = decode(splitValue[2]);
+
   toggledColor = colors[toggledIndex];
-  
+  gridArray[cell] = toggledIndex;
+
   const currentRow = Math.floor(cell / numCols);
   const currentCol = cell % numCols;
 
@@ -165,9 +182,10 @@ app.frame('/uprightV1', (c) => {
   const cellUp = (cellUpRow * numCols + cellUpCol);
   const cellRight = (cellRightRow * numCols + cellRightCol);
   
-  const upButtionValue = combineValues(toggledIndex, cellUp, "0");
-  const rightButtionValue = combineValues(toggledIndex, cellRight, "0");
-  const toggledButtonValue = combineValues(nextToggleValue, cell, "0");
+  const encodedGA = encode(gridArray);
+  const upButtionValue = combineValues(toggledIndex, cellUp, encodedGA);
+  const rightButtionValue = combineValues(toggledIndex, cellRight, encodedGA);
+  const toggledButtonValue = combineValues(nextToggleValue, cell, encodedGA);
 
   return c.res({
     image: (
@@ -306,7 +324,7 @@ app.frame('/uprightV1', (c) => {
                 style={{
                   width: 40,
                   height: 40,
-                  background: 'black',
+                  background: colors[gridArray[index]],
                   border: index === cell ? 'white' : 'grey',
                   borderWidth: index === cell ? 4 : 1,
                 }}
@@ -326,7 +344,7 @@ app.frame('/uprightV1', (c) => {
 
 devtools(app, { serveStatic })
 
-// serve({
-//   fetch: app.fetch,
-//   port: 3000,
-// })
+serve({
+  fetch: app.fetch,
+  port: 3000,
+})
